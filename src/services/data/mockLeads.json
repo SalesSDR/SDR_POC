@@ -1,0 +1,114 @@
+{
+  "contacts": [
+    {
+      "id": "ap_lead_cso_001",
+      "first_name": "Rajesh",
+      "last_name": "Kumar",
+      "title": "Chief Sales Officer",
+      "linkedin_url": "https://www.linkedin.com/in/rajesh-kumar-cso-india",
+      "country": "India",
+      "organization": {
+        "name": "Infosys Dynamic Technologies Ltd."
+      }
+    },
+    {
+      "id": "ap_lead_vp_002",
+      "first_name": "Michael",
+      "last_name": "O'Connor",
+      "title": "VP of Sales",
+      "linkedin_url": "https://www.linkedin.com/in/michael-oconnor-vp-sales-us",
+      "country": "United States",
+      "organization": {
+        "name": "Apex Cloud Systems LLC"
+      }
+    },
+    {
+      "id": "ap_lead_cso_003",
+      "first_name": "Fatima",
+      "last_name": "Al-Mansoori",
+      "title": "Chief Sales Officer",
+      "linkedin_url": "https://www.linkedin.com/in/fatima-mansoori-sales-uae",
+      "country": "United Arab Emirates",
+      "organization": {
+        "name": "Dubai Logistics Solutions"
+      }
+    },
+    {
+      "id": "ap_lead_vp_004",
+      "first_name": "David",
+      "last_name": "Miller",
+      "title": "VP of Sales",
+      "linkedin_url": "https://www.linkedin.com/in/david-miller-sales-leadership",
+      "country": "United States",
+      "organization": {
+        "name": "Boston BioHealth Systems"
+      }
+    },
+    {
+      "id": "ap_lead_cso_005",
+      "first_name": "Vikram",
+      "last_name": "Sen",
+      "title": "Chief Sales Officer",
+      "linkedin_url": "https://www.linkedin.com/in/vikram-sen-enterprise-sales",
+      "country": "India",
+      "organization": {
+        "name": "TCS Global Enterprise"
+      }
+    },
+    {
+      "id": "ap_lead_sales_006",
+      "first_name": "Jennifer",
+      "last_name": "Choi",
+      "title": "Director of Sales Operations",
+      "linkedin_url": "https://www.linkedin.com/in/jennifer-choi-salesops",
+      "country": "United States",
+      "organization": {
+        "name": "Silicon Valley Analytics"
+      }
+    },
+    {
+      "id": "ap_lead_sales_007",
+      "first_name": "Tariq",
+      "last_name": "Mahmood",
+      "title": "Director of Global Sales",
+      "linkedin_url": "https://www.linkedin.com/in/tariq-mahmood-global-sales",
+      "country": "United Arab Emirates",
+      "organization": {
+        "name": "Emirates Trade Infrastructure"
+      }
+    },
+    {
+      "id": "ap_lead_sales_008",
+      "first_name": "Priyah",
+      "last_name": "Sharma",
+      "title": "VP of Revenue Operations",
+      "linkedin_url": "https://www.linkedin.com/in/priyah-sharma-revops",
+      "country": "India",
+      "organization": {
+        "name": "Wipro Enterprise Integration"
+      }
+    },
+    {
+      "id": "ap_lead_sales_009",
+      "first_name": "Amanda",
+      "last_name": "Ross",
+      "title": "VP of Business Development",
+      "linkedin_url": "https://www.linkedin.com/in/amanda-ross-bizdev-cro",
+      "country": "United States",
+      "organization": {
+        "name": "Cognitive Agentic Systems"
+      }
+    },
+    {
+      "id": "ap_lead_sales_010",
+      "first_name": "Zayd",
+      "last_name": "Qasim",
+      "title": "VP of Corporate Partnerships",
+      "linkedin_url": "https://www.linkedin.com/in/zayd-qasim-partnerships",
+      "country": "United Arab Emirates",
+      "organization": {
+        "name": "Abu Dhabi Digital Agency"
+      }
+    }
+  ]
+}

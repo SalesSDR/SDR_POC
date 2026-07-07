@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+dist/
+
+# Configuration and Secrets
+.env
+
+# Logs and system generated
+*.log
+.gemini/
+.agents/
+.idea/
+.vscode/

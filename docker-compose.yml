@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lions-postgres
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: lions_ai_sdr
+      POSTGRES_USER: sdr_admin
+      POSTGRES_PASSWORD: admin_secure_pass_2026
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: lions-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    restart: always
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
