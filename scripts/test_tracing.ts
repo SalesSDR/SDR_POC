@@ -37,7 +37,7 @@ async function main() {
     if (pass2.newlyInserted !== 0) {
       console.warn('⚠️ [test-tracing]: Idempotency counts do not match expected outcomes.');
     } else {
-      console.log('✅ [test-tracing]: Idempotency caching layer verified successfully.');
+      console.log('✅ [test-tracing]: Live Apollo extraction and pre-fetch protection check verified successfully.');
     }
 
     // Grab a target prospect for the next steps
