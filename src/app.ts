@@ -12,7 +12,7 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json({
-  verify: (req: any, res, buf) => {
+  verify: (req: any, _res, buf) => {
     req.rawBody = buf;
   }
 }));
