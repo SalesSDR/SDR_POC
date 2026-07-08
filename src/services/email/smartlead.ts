@@ -1,6 +1,6 @@
 import config from '../../config/env';
 import db from '../../config/database';
-import { ai } from '../ai/gemini';
+import { classifyIntent } from '../ai/gemini';
 
 /**
  * Enrolls a prospect into the designated Smartlead campaign.
@@ -95,81 +95,6 @@ export async function classifyEmailIntent(
   trace?: any,
   modelOverride?: string
 ): Promise<'INTERESTED' | 'NOT_INTERESTED' | 'OOO' | 'QUESTION'> {
-  const modelName =
-    modelOverride ||
-    (config.APP_ENV === 'production' ? 'gemini-1.5-flash' : 'gemini-flash-latest');
-  const start = Date.now();
-  let generation: any = null;
-
-  if (trace) {
-    generation = trace.generation({
-      name: 'classify-email-intent',
-      model: modelName,
-      modelParameters: {
-        temperature: 0.1,
-        responseMimeType: 'application/json'
-      },
-      input: replyBody
-    });
-  }
-
-  try {
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: replyBody,
-      config: {
-        temperature: 0.1,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            intent: {
-              type: 'STRING',
-              enum: ['INTERESTED', 'NOT_INTERESTED', 'OOO', 'QUESTION']
-            }
-          },
-          required: ['intent']
-        },
-        systemInstruction: 'Classify the incoming cold email reply into one of these intent tags: INTERESTED, NOT_INTERESTED, OOO, QUESTION. Return a JSON object containing the "intent" field matching one of the uppercase tags.'
-      }
-    });
-
-    const responseText = (response.text || '{}').trim();
-    const parsed = JSON.parse(responseText);
-    const rawIntent = (parsed.intent || '').toUpperCase();
-
-    const allowedIntents = ['INTERESTED', 'NOT_INTERESTED', 'OOO', 'QUESTION'];
-    const finalIntent = allowedIntents.includes(rawIntent) ? rawIntent : 'QUESTION';
-
-    if (generation) {
-      const usage = response.usageMetadata;
-      generation.update({
-        output: finalIntent,
-        completionStartTime: new Date(start),
-        endTime: new Date(),
-        usage: usage ? {
-          promptTokens: usage.promptTokenCount,
-          completionTokens: usage.candidatesTokenCount,
-          totalTokens: usage.totalTokenCount
-        } : undefined
-      });
-    }
-
-    return finalIntent as any;
-  } catch (err: any) {
-    if (config.APP_ENV !== 'production' && (err.message.includes('429') || err.message.includes('quota') || err.message.includes('limit') || err.message.includes('Quota') || err.message.includes('Limit'))) {
-      console.warn(`⚠️ [smartlead]: Gemini API quota exceeded in development. Falling back to mock intent tag 'INTERESTED' for testing...`);
-      return 'INTERESTED';
-    }
-
-    if (generation) {
-      generation.update({
-        output: err.message,
-        endTime: new Date(),
-        statusMessage: err.message
-      });
-    }
-    console.error('[smartlead]: classifyEmailIntent failed:', err.message);
-    throw err;
-  }
+  const result = await classifyIntent(replyBody, trace, modelOverride);
+  return result as any;
 }

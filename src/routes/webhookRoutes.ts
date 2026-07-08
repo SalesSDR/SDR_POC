@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import config from '../config/env';
 import db from '../config/database';
-import { traceAIWorkflow } from '../services/ai/observability';
+import { traceInboundAnalysis } from '../services/ai/observability';
 import { classifyEmailIntent } from '../services/email/smartlead';
 
 const router = Router();
@@ -73,7 +73,7 @@ export async function handleSmartleadReplyWebhook(req: Request, res: Response): 
     const prospect = prospectResult.rows[0];
 
     // Wrap execution context inside a Langfuse trace
-    await traceAIWorkflow('email-inbound-reply', prospect.id, async (trace) => {
+    await traceInboundAnalysis(prospect.id, 'EMAIL', replyBody, async (trace) => {
       // Classify the reply text intent using gemini-1.5-flash
       const intent = await classifyEmailIntent(replyBody, trace);
       console.log(`[webhook]: Incoming reply received. Intent classified as '${intent}'. Prospect state updated.`);
@@ -103,6 +103,7 @@ export async function handleSmartleadReplyWebhook(req: Request, res: Response): 
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [prospect.id, 'EMAIL', 'INBOUND', replyBody, intent, trace.id]
       );
+      console.log('[database]: Interaction tracking log recorded with trace_id lookup tags.');
     });
 
     return res.status(200).json({ status: 'ok' });

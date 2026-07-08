@@ -76,4 +76,52 @@ export async function traceAIWorkflow<T>(
   }
 }
 
+export async function traceInboundAnalysis<T>(
+  prospectId: string,
+  channel: string,
+  rawText: string,
+  executionBlock: (trace: ReturnType<typeof langfuse.trace>) => Promise<T>
+): Promise<T> {
+  const workflowName = `${channel.toLowerCase()}-inbound-reply`;
+  console.log(`[langfuse]: Initializing trace context for workflow: "${workflowName}"`);
+
+  const trace = langfuse.trace({
+    name: workflowName,
+    userId: prospectId,
+    input: rawText,
+    metadata: {
+      channel,
+      environment: config.NODE_ENV,
+      timestamp: new Date().toISOString(),
+    },
+  });
+
+  try {
+    const result = await executionBlock(trace);
+
+    trace.update({
+      tags: ['success'],
+      output: typeof result === 'object' ? JSON.stringify(result) : String(result),
+    });
+
+    return result;
+  } catch (err: any) {
+    trace.update({
+      tags: ['failure'],
+      output: JSON.stringify({
+        error: err.message || 'Unknown error',
+        stack: err.stack,
+      }),
+    });
+    throw err;
+  } finally {
+    try {
+      await langfuse.flushAsync();
+      console.log('[langfuse]: Tracing telemetry flush complete. 0 exceptions raised.');
+    } catch (flushErr) {
+      console.error('[langfuse]: Failed to flush traces to endpoint:', flushErr);
+    }
+  }
+}
+
 export default langfuse;

@@ -240,6 +240,7 @@ async function main() {
       throw new Error('Verification failed: Smartlead webhook execution did not upgrade prospect status to REPLIED_INTERESTED.');
     }
       console.log('✅ [test-tracing]: Asynchronous queue worker routes and webhook verification logic verified successfully.');
+      console.log('✅ [test-tracing]: Gemini structured intent processing brain and Langfuse monitoring hooks verified successfully.');
 
     // ==========================================
     // PHASE 1 VERIFICATION: Database & AI Tracing

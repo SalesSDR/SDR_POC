@@ -13,60 +13,89 @@ export const ai = new GoogleGenAI({
  * @param text The input message text to classify.
  * @param contextTrace The parent Langfuse trace context to record this generation.
  */
-export async function classifyIntent(text: string, contextTrace: any, modelOverride?: string): Promise<string> {
+export async function classifyIntent(text: string, contextTrace?: any, modelOverride?: string): Promise<string> {
   const modelName = modelOverride || (config.APP_ENV === 'production' ? 'gemini-1.5-flash' : 'gemini-flash-latest');
   const start = Date.now();
 
-  // Create a sub-generation in Langfuse
-  const generation = contextTrace.generation({
+  // Create a sub-generation in Langfuse if trace context exists
+  const generation = contextTrace ? contextTrace.generation({
     name: 'classify-intent',
     model: modelName,
     modelParameters: {
       temperature: 0.1,
       maxOutputTokens: 100,
+      responseMimeType: 'application/json',
     },
     input: text,
-  });
+  }) : null;
 
   try {
+    console.log('[gemini-brain]: Invoking structured flash model classification...');
     const response = await ai.models.generateContent({
       model: modelName,
       contents: text,
       config: {
         temperature: 0.1,
         maxOutputTokens: 100,
-        systemInstruction: 'Classify the incoming sales lead query into one of these intent tags: QUESTION, OBJECTION, INTERESTED, NOT_INTERESTED, DNC. Respond with ONLY the tag name in uppercase.',
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            intent: {
+              type: 'STRING',
+              enum: ['INTERESTED', 'NOT_INTERESTED', 'OOO', 'QUESTION']
+            },
+            referred_contact_email: {
+              type: 'STRING',
+              description: 'Optional email address of a referred contact if found in the reply. Otherwise null.'
+            }
+          },
+          required: ['intent']
+        },
+        systemInstruction: 'Classify the incoming sales lead query into one of these intent tags: INTERESTED, NOT_INTERESTED, OOO, QUESTION. Return a JSON object containing the "intent" field matching one of the uppercase tags, and optionally "referred_contact_email" if another person is referred.',
       },
     });
 
     const outputText = (response.text || '').trim();
+    console.log(`[gemini-brain]: Schema extraction success. Payload: ${outputText}`);
 
     // Capture token usage metrics from Gemini's usageMetadata response properties
     const usage = response.usageMetadata;
     
-    generation.update({
-      output: outputText,
-      completionStartTime: new Date(start),
-      endTime: new Date(),
-      usage: usage ? {
-        promptTokens: usage.promptTokenCount,
-        completionTokens: usage.candidatesTokenCount,
-        totalTokens: usage.totalTokenCount,
-      } : undefined,
-    });
-
-    return outputText;
-  } catch (err: any) {
-    if (config.APP_ENV !== 'production' && (err.message.includes('429') || err.message.includes('quota') || err.message.includes('limit') || err.message.includes('Quota') || err.message.includes('Limit'))) {
-      console.warn(`⚠️ [gemini]: Gemini API quota exceeded in development. Falling back to mock intent tag 'QUESTION' for testing...`);
-      return 'QUESTION';
+    if (generation) {
+      generation.update({
+        output: outputText,
+        completionStartTime: new Date(start),
+        endTime: new Date(),
+        usage: usage ? {
+          promptTokens: usage.promptTokenCount,
+          completionTokens: usage.candidatesTokenCount,
+          totalTokens: usage.totalTokenCount,
+        } : undefined,
+      });
     }
 
-    generation.update({
-      output: err.message,
-      endTime: new Date(),
-      statusMessage: err.message,
-    });
+    try {
+      const parsed = JSON.parse(outputText);
+      const allowed = ['INTERESTED', 'NOT_INTERESTED', 'OOO', 'QUESTION'];
+      const rawIntent = (parsed.intent || '').toUpperCase();
+      return allowed.includes(rawIntent) ? rawIntent : 'QUESTION';
+    } catch {
+      return 'QUESTION';
+    }
+  } catch (err: any) {
+    if (config.APP_ENV !== 'production' && (err.message.includes('429') || err.message.includes('quota') || err.message.includes('limit') || err.message.includes('Quota') || err.message.includes('Limit'))) {
+      console.warn(`⚠️ [gemini]: Gemini API quota exceeded in development. Falling back to mock intent tag 'INTERESTED' for testing...`);
+      return 'INTERESTED';
+    }
+
+    if (generation) {
+      generation.update({
+        output: err.message,
+        endTime: new Date(),
+        statusMessage: err.message,
+      });
+    }
     console.error('[gemini]: classifyIntent failed:', err.message);
     throw err;
   }
