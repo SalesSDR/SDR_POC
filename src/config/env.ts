@@ -16,6 +16,7 @@ const envSchema = z.object({
   APOLLO_API_KEY: z.string().min(1, "APOLLO_API_KEY is required"),
   ALLOW_LIVE_APOLLO: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(false),
   APOLLO_SEARCH_LIMIT: z.coerce.number().default(5),
+  ALLOW_LIVE_OUTREACH: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(false),
   APP_ENV: z.enum(["development", "production", "test"]).default("development"),
   UNIPILE_ACCESS_TOKEN: z.string().min(1, "UNIPILE_ACCESS_TOKEN is required"),
   UNIPILE_API_URL: z.string().url("UNIPILE_API_URL must be a valid URL"),

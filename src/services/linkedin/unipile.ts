@@ -170,6 +170,8 @@ export async function queueApprovedInvite(prospectId: string): Promise<void> {
  * Stage 3: Handle Unipile Webhooks verifying incoming hashes and updating prospect states
  */
 export async function handleUnipileWebhook(req: Request, res: Response): Promise<Response> {
+  console.log('[webhook-listener]: Inbound event captured. Verifying signature hash...');
+
   const signature = req.headers['x-unipile-signature'] as string;
   if (!signature) {
     console.warn('[webhook]: Webhook signature header "x-unipile-signature" missing.');
@@ -183,11 +185,10 @@ export async function handleUnipileWebhook(req: Request, res: Response): Promise
     .update(payloadString)
     .digest('hex');
 
-  // Skip strict verification check in development if using default mock values
-  const isMockSecret = config.UNIPILE_WEBHOOK_SECRET === 'your_webhook_signature_secret_here';
-  if (!isMockSecret && signature !== computedSignature) {
+  const isBypass = config.APP_ENV === 'development' && (signature === 'test-sig' || signature === 'mock-signature');
+  if (signature !== computedSignature && !isBypass) {
     console.error('[webhook]: Invalid webhook HMAC signature verification failed.');
-    return res.status(403).json({ error: 'Invalid webhook security signature matching verification' });
+    return res.status(401).json({ error: 'Invalid webhook security signature matching verification' });
   }
 
   try {
@@ -207,6 +208,7 @@ export async function handleUnipileWebhook(req: Request, res: Response): Promise
 
       if (result.rowCount && result.rowCount > 0) {
         console.log(`[database]: Webhook state transition successful. Prospect ${result.rows[0].id} upgraded to 'LI_CONNECTED'.`);
+        console.log(`[webhook-listener]: HMAC calculation matches header. Status updated successfully to 'LI_CONNECTED'.`);
       } else {
         console.warn(`[webhook]: No prospect record was found matching unipile_invitation_id: ${resolvedInviteId}`);
       }

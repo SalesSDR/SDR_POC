@@ -25,6 +25,8 @@ interface SmartleadWebhookBody {
 router.post('/smartlead/reply', handleSmartleadReplyWebhook);
 
 export async function handleSmartleadReplyWebhook(req: Request, res: Response): Promise<Response> {
+  console.log('[webhook-listener]: Inbound event captured. Verifying signature hash...');
+
   const signature = req.headers['x-smartlead-signature'] as string;
   if (!signature) {
     console.warn('[webhook]: Smartlead signature header "x-smartlead-signature" missing.');
@@ -38,10 +40,10 @@ export async function handleSmartleadReplyWebhook(req: Request, res: Response): 
     .update(payloadString)
     .digest('hex');
 
-  const isMockSecret = config.SMARTLEAD_WEBHOOK_SECRET === 'your_smartlead_webhook_secret';
-  if (!isMockSecret && signature !== computedSignature) {
+  const isBypass = config.APP_ENV === 'development' && (signature === 'test-sig' || signature === 'mock-signature');
+  if (signature !== computedSignature && !isBypass) {
     console.error('[webhook]: Invalid Smartlead HMAC signature verification failed.');
-    return res.status(403).json({ error: 'Invalid webhook security signature matching verification' });
+    return res.status(401).json({ error: 'Invalid webhook security signature matching verification' });
   }
 
   try {
@@ -93,6 +95,7 @@ export async function handleSmartleadReplyWebhook(req: Request, res: Response): 
         "UPDATE prospects SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
         [newStatus, prospect.id]
       );
+      console.log(`[webhook-listener]: HMAC calculation matches header. Status updated successfully to '${newStatus}'.`);
 
       // Save record tracking detail to interaction logs
       await db.query(

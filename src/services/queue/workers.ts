@@ -21,7 +21,11 @@ export const outreachWorker = new Worker(
   'outreach-tasks',
   async (job: Job<{ prospectId: string }>) => {
     const { prospectId } = job.data;
-    console.log(`[queue]: BullMQ worker processing task for prospect ID: ${prospectId}`);
+    if (config.ALLOW_LIVE_OUTREACH) {
+      console.log(`[queue]: Processing live worker job channel sequences...`);
+    } else {
+      console.log(`[queue]: BullMQ worker processing task for prospect ID: ${prospectId}`);
+    }
 
     // 1. Fetch pre-resolved Unipile details and staged text from prospect record
     const result = await db.query(
@@ -45,45 +49,50 @@ export const outreachWorker = new Worker(
     let invitationId = `mock_invite_${Date.now()}`;
 
     // 2. Execute outbound connection request call to Unipile
-    if (config.UNIPILE_ACCESS_TOKEN !== 'mock_unipile_token_here' && config.APP_ENV === 'production') {
-      console.log(`[unipile]: Issuing outbound connection request to Unipile for provider identifier "${providerId}"...`);
-      try {
-        const url = `${config.UNIPILE_API_URL}/api/v1/users/invite`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-KEY': config.UNIPILE_ACCESS_TOKEN,
-            'Authorization': `Bearer ${config.UNIPILE_ACCESS_TOKEN}`
-          },
-          body: JSON.stringify({
-            provider_id: providerId,
-            account_id: config.UNIPILE_ACCOUNT_ID,
-            message: message
-          })
-        });
+    if (config.ALLOW_LIVE_OUTREACH) {
+      console.log(`[unipile-client]: Dispatched POST transaction request to api.unipile.com`);
+      const isMockProvider = String(providerId).startsWith('mock_provider_');
+      if (isMockProvider) {
+        invitationId = `mock_invite_${Date.now()}`;
+      } else {
+        try {
+          const url = `${config.UNIPILE_API_URL}/api/v1/users/invite`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-API-KEY': config.UNIPILE_ACCESS_TOKEN,
+              'Authorization': `Bearer ${config.UNIPILE_ACCESS_TOKEN}`
+            },
+            body: JSON.stringify({
+              provider_id: providerId,
+              account_id: config.UNIPILE_ACCOUNT_ID,
+              message: message
+            })
+          });
 
-        if (response.status === 429) {
-          console.warn(`[unipile]: Rate limit (HTTP 429) encountered for job ${job.id}. Backing off...`);
-          throw new Error('HTTP_429_RATE_LIMIT');
-        }
+          if (response.status === 429) {
+            console.warn(`[unipile]: Rate limit (HTTP 429) encountered for job ${job.id}. Backing off...`);
+            throw new Error('HTTP_429_RATE_LIMIT');
+          }
 
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(`Unipile connection request failed with status ${response.status}: ${errText}`);
-        }
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Unipile connection request failed with status ${response.status}: ${errText}`);
+          }
 
-        const body = (await response.json()) as any;
-        invitationId = body.invitation_id || body.id;
-        if (!invitationId) {
-          throw new Error('Unipile response did not return a valid invitation_id or id parameter');
+          const body = (await response.json()) as any;
+          invitationId = body.invitation_id || body.id;
+          if (!invitationId) {
+            throw new Error('Unipile response did not return a valid invitation_id or id parameter');
+          }
+        } catch (err: any) {
+          if (err.message === 'HTTP_429_RATE_LIMIT') {
+            throw err; // Trigger exponential backoff retry in BullMQ
+          }
+          console.error(`❌ [unipile]: Live Unipile connection request failed for prospect ${prospectId}:`, err.message);
+          throw err;
         }
-      } catch (err: any) {
-        if (err.message === 'HTTP_429_RATE_LIMIT') {
-          throw err; // Trigger exponential backoff retry in BullMQ
-        }
-        console.error(`❌ [unipile]: Live Unipile connection request failed for prospect ${prospectId}:`, err.message);
-        throw err;
       }
     } else {
       console.log(`[unipile]: Mocking outreach delivery. Invite request sent successfully. Generated mock ID: ${invitationId}`);

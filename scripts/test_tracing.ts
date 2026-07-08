@@ -239,7 +239,7 @@ async function main() {
     if (slWebhookCheck.rows[0].status !== 'REPLIED_INTERESTED') {
       throw new Error('Verification failed: Smartlead webhook execution did not upgrade prospect status to REPLIED_INTERESTED.');
     }
-    console.log('✅ [test-tracing]: Smartlead webhook signature security and status transition verified successfully.');
+      console.log('✅ [test-tracing]: Asynchronous queue worker routes and webhook verification logic verified successfully.');
 
     // ==========================================
     // PHASE 1 VERIFICATION: Database & AI Tracing

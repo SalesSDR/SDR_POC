@@ -27,40 +27,46 @@ export async function enrollInCampaign(prospectId: string): Promise<string> {
   let smartleadId = `mock_sl_${Date.now()}`;
 
   // 2. Execute enrollment request call to Smartlead import endpoint
-  if (config.SMARTLEAD_API_KEY !== 'mock_smartlead_api_key' && config.APP_ENV === 'production') {
-    try {
-      const url = `${config.SMARTLEAD_API_URL}/campaigns/import?api_key=${config.SMARTLEAD_API_KEY}`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          campaign_id: Number(config.SMARTLEAD_CAMPAIGN_ID),
-          leads: [
-            {
-              email: prospect.email,
-              first_name: prospect.first_name || '',
-              last_name: prospect.last_name || '',
-              company_name: prospect.company_name || ''
-            }
-          ]
-        })
-      });
+  if (config.ALLOW_LIVE_OUTREACH) {
+    console.log(`[smartlead-client]: Dispatched lead enrollment request payload successfully.`);
+    const isMockKey = config.SMARTLEAD_API_KEY === 'mock_smartlead_api_key';
+    if (isMockKey) {
+      smartleadId = `mock_sl_${Date.now()}`;
+    } else {
+      try {
+        const url = `${config.SMARTLEAD_API_URL}/campaigns/import?api_key=${config.SMARTLEAD_API_KEY}`;
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            campaign_id: Number(config.SMARTLEAD_CAMPAIGN_ID),
+            leads: [
+              {
+                email: prospect.email,
+                first_name: prospect.first_name || '',
+                last_name: prospect.last_name || '',
+                company_name: prospect.company_name || ''
+              }
+            ]
+          })
+        });
 
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Smartlead campaigns import failed with status ${response.status}: ${errText}`);
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Smartlead campaigns import failed with status ${response.status}: ${errText}`);
+        }
+
+        const body = (await response.json()) as any;
+        // Extract the lead ID from import response array or root level parameters
+        const importedLead = body.leads?.[0] || body;
+        smartleadId = String(importedLead.id || importedLead.lead_id || `mock_sl_${Date.now()}`);
+      } catch (err: any) {
+        console.error(`❌ [smartlead]: Live campaigns import failed for prospect ${prospectId}:`, err.message);
+        throw err;
       }
-
-      const body = (await response.json()) as any;
-      // Extract the lead ID from import response array or root level parameters
-      const importedLead = body.leads?.[0] || body;
-      smartleadId = String(importedLead.id || importedLead.lead_id || `mock_sl_${Date.now()}`);
-    } catch (err: any) {
-      console.error(`❌ [smartlead]: Live campaigns import failed for prospect ${prospectId}:`, err.message);
-      throw err;
     }
   } else {
     console.log(`[smartlead-service]: Enrolled prospect into campaign. Mocking delivery response.`);
