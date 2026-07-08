@@ -179,7 +179,9 @@ export async function handleUnipileWebhook(req: Request, res: Response): Promise
   }
 
   // Verify HMAC SHA256 signature payloads
-  const payloadString = JSON.stringify(req.body);
+  const payloadString = (req as any).rawBody
+    ? (req as any).rawBody.toString('utf8')
+    : JSON.stringify(req.body);
   const computedSignature = crypto
     .createHmac('sha256', config.UNIPILE_WEBHOOK_SECRET)
     .update(payloadString)

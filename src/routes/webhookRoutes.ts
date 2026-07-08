@@ -34,7 +34,9 @@ export async function handleSmartleadReplyWebhook(req: Request, res: Response): 
   }
 
   // Calculate HMAC SHA256 payload signature
-  const payloadString = JSON.stringify(req.body);
+  const payloadString = (req as any).rawBody
+    ? (req as any).rawBody.toString('utf8')
+    : JSON.stringify(req.body);
   const computedSignature = crypto
     .createHmac('sha256', config.SMARTLEAD_WEBHOOK_SECRET)
     .update(payloadString)

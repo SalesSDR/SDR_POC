@@ -11,7 +11,11 @@ const app = express();
 // Standard middleware for secure headers, CORS, and request body parsing
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify: (req: any, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 
 // Webhook endpoints
 app.post('/webhooks/unipile', handleUnipileWebhook);
