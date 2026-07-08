@@ -34,7 +34,7 @@ export async function enrollInCampaign(prospectId: string): Promise<string> {
       smartleadId = `mock_sl_${Date.now()}`;
     } else {
       try {
-        const url = `${config.SMARTLEAD_API_URL}/campaigns/import?api_key=${config.SMARTLEAD_API_KEY}`;
+        const url = `${config.SMARTLEAD_API_URL}/campaigns/${config.SMARTLEAD_CAMPAIGN_ID}/leads?api_key=${config.SMARTLEAD_API_KEY}`;
         
         const response = await fetch(url, {
           method: 'POST',
@@ -42,8 +42,7 @@ export async function enrollInCampaign(prospectId: string): Promise<string> {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            campaign_id: Number(config.SMARTLEAD_CAMPAIGN_ID),
-            leads: [
+            lead_list: [
               {
                 email: prospect.email,
                 first_name: prospect.first_name || '',
@@ -61,7 +60,7 @@ export async function enrollInCampaign(prospectId: string): Promise<string> {
 
         const body = (await response.json()) as any;
         // Extract the lead ID from import response array or root level parameters
-        const importedLead = body.leads?.[0] || body;
+        const importedLead = body.leads?.[0] || body.lead_list?.[0] || body;
         smartleadId = String(importedLead.id || importedLead.lead_id || `mock_sl_${Date.now()}`);
       } catch (err: any) {
         console.error(`❌ [smartlead]: Live campaigns import failed for prospect ${prospectId}:`, err.message);
