@@ -4,11 +4,11 @@ async function createDemoLead() {
   // ==========================================
   // CONFIGURATION: Customize your target demo lead details here
   // ==========================================
-  const firstName = 'John';
-  const lastName = 'Doe';
+  const firstName = 'there';
+  const lastName = '!';
   
   // Replace this with your own LinkedIn vanity URL (e.g. https://www.linkedin.com/in/akanksha-singh/)
-  const linkedinUrl = 'https://www.linkedin.com/in/meenakshi-singh-2b45192a2/'; 
+  const linkedinUrl = 'https://www.linkedin.com/in/mayanknarula1/'; 
   
   // Replace this with your own target email address
   const email = 'myagenttest30@gmail.com';
