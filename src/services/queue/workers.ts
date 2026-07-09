@@ -121,6 +121,17 @@ export const outreachWorker = new Worker(
             if (response.status === 422 && errText.includes('already_invited_recently')) {
               console.warn(`[unipile]: Prospect ${prospectId} has already been invited recently. Self-healing state to LI_INVITED.`);
               invitationId = 'already_invited_state_sync';
+              
+              await db.query(
+                `UPDATE prospects 
+                 SET unipile_invitation_id = $1, 
+                     status = 'LI_INVITED', 
+                     updated_at = CURRENT_TIMESTAMP 
+                 WHERE id = $2`,
+                ['already_invited_state_sync', prospectId]
+              );
+              console.log(`[unipile]: Connection request marked as already invited. Upgraded status to 'LI_INVITED' for prospect ${prospectId}.`);
+              return { invitationId: 'already_invited_state_sync', prospectId };
             } else {
               throw new Error(`Unipile connection request failed with status ${response.status}: ${errText}`);
             }
