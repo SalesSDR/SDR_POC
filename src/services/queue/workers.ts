@@ -116,7 +116,14 @@ export const outreachWorker = new Worker(
 
           if (!response.ok) {
             const errText = await response.text();
-            throw new Error(`Unipile connection request failed with status ${response.status}: ${errText}`);
+            
+            // Self-heal: If the recipient is already invited, mark it and bypass retries
+            if (response.status === 422 && errText.includes('already_invited_recently')) {
+              console.warn(`[unipile]: Prospect ${prospectId} has already been invited recently. Self-healing state to LI_INVITED.`);
+              invitationId = 'already_invited_state_sync';
+            } else {
+              throw new Error(`Unipile connection request failed with status ${response.status}: ${errText}`);
+            }
           }
 
           const body = (await response.json()) as any;
