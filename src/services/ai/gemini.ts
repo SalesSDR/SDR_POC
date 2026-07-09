@@ -23,7 +23,7 @@ export async function classifyIntent(text: string, contextTrace?: any, modelOver
     model: modelName,
     modelParameters: {
       temperature: 0.1,
-      maxOutputTokens: 100,
+      maxOutputTokens: 1000,
       responseMimeType: 'application/json',
     },
     input: text,
@@ -36,7 +36,7 @@ export async function classifyIntent(text: string, contextTrace?: any, modelOver
       contents: text,
       config: {
         temperature: 0.1,
-        maxOutputTokens: 100,
+        maxOutputTokens: 1000,
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'OBJECT',

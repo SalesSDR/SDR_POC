@@ -4,6 +4,7 @@ import config from '../../config/env';
 import db from '../../config/database';
 
 import { enrollInCampaign } from '../email/smartlead';
+import { initiateOutboundCall } from '../voice/twilioVoice';
 
 // Initialize a dedicated Redis connection for the worker thread
 const workerRedisConnection = new IORedis(config.REDIS_URL, {
@@ -57,6 +58,45 @@ export const outreachWorker = new Worker(
       console.log(`[queue]: No LinkedIn reply detected for prospect ${prospectId} after delay. Escalating to email...`);
       const smartleadId = await enrollInCampaign(prospectId);
       return { status: 'escalated', smartleadId };
+    }
+
+    // Handle call escalation outreach triggering
+    if (job.name === 'CALL_ESCALATED' || job.name === 'call_escalation') {
+      console.log(`[queue]: Processing CALL_ESCALATED job ${job.id} for prospect: ${prospectId}`);
+
+      const result = await db.query(
+        'SELECT id, metadata, status FROM prospects WHERE id = $1',
+        [prospectId]
+      );
+
+      if (result.rowCount === 0) {
+        console.warn(`[queue]: Prospect ${prospectId} not found in database. Exiting evaluation task.`);
+        return { status: 'skipped', reason: 'prospect_not_found' };
+      }
+
+      const prospect = result.rows[0];
+      const metadata = prospect.metadata || {};
+      const phoneNumber = metadata.phone || metadata.phone_number || metadata.phoneNumber || metadata.mobile_number;
+
+      if (!phoneNumber) {
+        console.warn(`[queue]: Prospect ${prospectId} has no phone number attributes in metadata. Skipping voice escalation.`);
+        return { status: 'skipped', reason: 'missing_phone_number' };
+      }
+
+      // Transition database state to CALL_ESCALATED
+      await db.query(
+        `UPDATE prospects
+         SET status = 'CALL_ESCALATED',
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [prospectId]
+      );
+      console.log(`[queue]: Prospect ${prospectId} status transitioned to 'CALL_ESCALATED'.`);
+
+      // Dispatch outbound PSTN call via Twilio
+      await initiateOutboundCall(prospectId, phoneNumber);
+      
+      return { status: 'called', prospectId, phoneNumber };
     }
 
     if (config.ALLOW_LIVE_OUTREACH) {
@@ -116,31 +156,18 @@ export const outreachWorker = new Worker(
 
           if (!response.ok) {
             const errText = await response.text();
-            
-            // Self-heal: If the recipient is already invited, mark it and bypass retries
-            if (response.status === 422 && errText.includes('already_invited_recently')) {
-              console.warn(`[unipile]: Prospect ${prospectId} has already been invited recently. Self-healing state to LI_INVITED.`);
-              invitationId = 'already_invited_state_sync';
-              
-              await db.query(
-                `UPDATE prospects 
-                 SET unipile_invitation_id = $1, 
-                     status = 'LI_INVITED', 
-                     updated_at = CURRENT_TIMESTAMP 
-                 WHERE id = $2`,
-                ['already_invited_state_sync', prospectId]
-              );
-              console.log(`[unipile]: Connection request marked as already invited. Upgraded status to 'LI_INVITED' for prospect ${prospectId}.`);
-              return { invitationId: 'already_invited_state_sync', prospectId };
+            if (response.status === 422 && (errText.includes('already_invited_recently') || errText.includes('already_invited'))) {
+              console.warn(`[unipile]: Prospect ${prospectId} was already invited recently. Marking as invited in database.`);
+              invitationId = 'already_invited_recently';
             } else {
               throw new Error(`Unipile connection request failed with status ${response.status}: ${errText}`);
             }
-          }
-
-          const body = (await response.json()) as any;
-          invitationId = body.invitation_id || body.id;
-          if (!invitationId) {
-            throw new Error('Unipile response did not return a valid invitation_id or id parameter');
+          } else {
+            const body = (await response.json()) as any;
+            invitationId = body.invitation_id || body.id;
+            if (!invitationId) {
+              throw new Error('Unipile response did not return a valid invitation_id or id parameter');
+            }
           }
         } catch (err: any) {
           if (err.message === 'HTTP_429_RATE_LIMIT') {

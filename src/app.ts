@@ -32,8 +32,28 @@ app.get('/health', (_req: Request, res: Response) => {
 import db from './config/database';
 import { outreachWorker } from './services/queue/workers';
 
+import { WebSocketServer } from 'ws';
+import { handleVoiceStream } from './services/voice/streamBridge';
+
 const server = app.listen(config.PORT, () => {
   console.log(`[server]: Server is running securely at http://localhost:${config.PORT}`);
+});
+
+// Initialize WebSocket server without a standalone HTTP port
+const wss = new WebSocketServer({ noServer: true });
+
+// Listen for HTTP server upgrade events to route ws traffic
+server.on('upgrade', (request, socket, head) => {
+  const url = request.url || '';
+  const match = url.match(/^\/webhooks\/twilio\/stream\/([^/]+)$/);
+  if (match) {
+    const prospectId = match[1];
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      handleVoiceStream(ws, prospectId);
+    });
+  } else {
+    socket.destroy();
+  }
 });
 
 // Graceful shutdown handling
@@ -43,6 +63,13 @@ const gracefulShutdown = (signal: string) => {
   // Close server first, stops taking new requests
   server.close(async () => {
     console.log('[server]: Express server closed.');
+    
+    try {
+      console.log('[server]: Closing WebSocket server...');
+      wss.close();
+    } catch (err: any) {
+      console.error('[server]: Error closing WebSocket server:', err.message);
+    }
     
     try {
       // Shutdown BullMQ worker listener

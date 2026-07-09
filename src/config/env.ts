@@ -27,6 +27,11 @@ const envSchema = z.object({
   SMARTLEAD_WEBHOOK_SECRET: z.string().min(1, "SMARTLEAD_WEBHOOK_SECRET is required"),
   SMARTLEAD_API_URL: z.string().url("SMARTLEAD_API_URL must be a valid URL").default("https://server.smartlead.ai/api/v1"),
   LINKEDIN_FOLLOWUP_DELAY_MS: z.coerce.number().default(86400000),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_FROM_NUMBER: z.string().optional(),
+  GEMINI_LIVE_API_URL: z.string().url("GEMINI_LIVE_API_URL must be a valid URL").default("wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"),
+  SERVER_PUBLIC_HOST: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

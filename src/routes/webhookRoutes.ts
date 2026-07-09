@@ -251,4 +251,23 @@ export async function handleUnipileWebhook(req: Request, res: Response): Promise
   }
 }
 
+/**
+ * Express router path serving dynamic TwiML instructions when Twilio executes the calling sequence.
+ * POST /webhooks/twilio/twiml/:prospectId
+ */
+router.post('/twilio/twiml/:prospectId', (req: Request, res: Response) => {
+  const { prospectId } = req.params;
+  console.log(`[webhook]: Serving TwiML sequence request for prospect: ${prospectId}`);
+
+  if (!config.SERVER_PUBLIC_HOST) {
+    console.error('[webhook]: SERVER_PUBLIC_HOST configuration is missing.');
+    return res.status(500).send('SERVER_PUBLIC_HOST configuration is missing.');
+  }
+
+  const twiml = `<Response><Connect><Stream url="wss://${config.SERVER_PUBLIC_HOST}/webhooks/twilio/stream/${prospectId}" /></Connect></Response>`;
+  
+  res.type('text/xml');
+  return res.send(twiml);
+});
+
 export default router;
