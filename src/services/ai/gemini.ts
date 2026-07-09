@@ -57,6 +57,7 @@ export async function classifyIntent(text: string, contextTrace?: any, modelOver
     });
 
     const outputText = (response.text || '').trim();
+    console.log(`[gemini-brain]: Full response object:`, JSON.stringify(response));
     console.log(`[gemini-brain]: Schema extraction success. Payload: ${outputText}`);
 
     // Capture token usage metrics from Gemini's usageMetadata response properties

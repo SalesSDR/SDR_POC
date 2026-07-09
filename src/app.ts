@@ -2,7 +2,6 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import config from './config/env';
-import { handleUnipileWebhook } from './services/linkedin/unipile';
 import webhookRoutes from './routes/webhookRoutes';
 import './services/queue/workers'; // Starts the BullMQ worker listener
 
@@ -18,7 +17,6 @@ app.use(express.json({
 }));
 
 // Webhook endpoints
-app.post('/webhooks/unipile', handleUnipileWebhook);
 app.use('/webhooks', webhookRoutes);
 
 // Health check endpoint

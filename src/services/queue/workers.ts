@@ -3,6 +3,8 @@ import IORedis from 'ioredis';
 import config from '../../config/env';
 import db from '../../config/database';
 
+import { enrollInCampaign } from '../email/smartlead';
+
 // Initialize a dedicated Redis connection for the worker thread
 const workerRedisConnection = new IORedis(config.REDIS_URL, {
   maxRetriesPerRequest: null,
@@ -21,6 +23,42 @@ export const outreachWorker = new Worker(
   'outreach-tasks',
   async (job: Job<{ prospectId: string }>) => {
     const { prospectId } = job.data;
+
+    // Handle delayed multi-channel follow-up evaluation
+    if (job.name === 'evaluate_linkedin_to_email_sequence') {
+      console.log(`[queue]: Evaluating multi-channel sequence logic for job ${job.id} (prospect: ${prospectId})`);
+      
+      // Perform live parameterized SQL lookup to prevent race conditions
+      const result = await db.query(
+        'SELECT id, linkedin_replied, status FROM prospects WHERE id = $1',
+        [prospectId]
+      );
+
+      if (result.rowCount === 0) {
+        console.warn(`[queue]: Prospect ${prospectId} not found in database. Exiting evaluation task.`);
+        return { status: 'skipped', reason: 'prospect_not_found' };
+      }
+
+      const prospect = result.rows[0];
+
+      // Guardrail 1: Suppression on message reply
+      if (prospect.linkedin_replied) {
+        console.log(`[sequence-suppression]: Prospect has already responded via LinkedIn. Suppressing email outreach.`);
+        return { status: 'suppressed', reason: 'linkedin_replied_true' };
+      }
+
+      // Guardrail 2: Suppression on duplicate state outreach
+      if (prospect.status === 'EMAIL_SENT' || prospect.status === 'REPLIED_INTERESTED') {
+        console.log(`[queue]: Prospect status is already '${prospect.status}'. Suppressing duplicate outreach.`);
+        return { status: 'skipped', reason: 'duplicate_outreach_suppressed' };
+      }
+
+      // Escalation Path: Enroll in cold email campaign
+      console.log(`[queue]: No LinkedIn reply detected for prospect ${prospectId} after delay. Escalating to email...`);
+      const smartleadId = await enrollInCampaign(prospectId);
+      return { status: 'escalated', smartleadId };
+    }
+
     if (config.ALLOW_LIVE_OUTREACH) {
       console.log(`[queue]: Processing live worker job channel sequences...`);
     } else {

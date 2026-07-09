@@ -26,6 +26,7 @@ const envSchema = z.object({
   SMARTLEAD_CAMPAIGN_ID: z.coerce.string().min(1, "SMARTLEAD_CAMPAIGN_ID is required"),
   SMARTLEAD_WEBHOOK_SECRET: z.string().min(1, "SMARTLEAD_WEBHOOK_SECRET is required"),
   SMARTLEAD_API_URL: z.string().url("SMARTLEAD_API_URL must be a valid URL").default("https://server.smartlead.ai/api/v1"),
+  LINKEDIN_FOLLOWUP_DELAY_MS: z.coerce.number().default(86400000),
 });
 
 const parsed = envSchema.safeParse(process.env);
